@@ -17,7 +17,7 @@ setup_logger()
 st.title('Deploying a Pytorch model on Streamlit | Detectron2')
 st.write('What is Detectron2?')
 st.write('Detectron2 is Facebook AI Researchs next generation software system that implements state-of-the-art object detection algorithms. It is a ground-up rewrite of the previous version, Detectron, and it originates from maskrcnn-benchmark.')
-st.image('assets/img.png')
+st.image('img.png')
 
 # import some common detectron2 utilities
 
@@ -25,9 +25,9 @@ st.write('\n')
 
 st.title('Testing the Zoo Model')
 st.write('Test image')
-im = cv2.imread("assets/test_image1.jpeg")
+im = cv2.imread("test_image1.jpeg")
 # showing image
-st.image('assets/test_image1.jpeg')
+st.image('test_image1.jpeg')
 
 #Then, we create a detectron2 config and a detectron2 `DefaultPredictor` to run inference on this image.
 cfg = get_cfg()
