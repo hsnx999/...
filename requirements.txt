@@ -1,5 +1,4 @@
-pyyaml
-torch
-torchvision
-git+https://github.com/facebookresearch/detectron2.git #detectron2
-opencv-contrib-python-headless
+pynput==1.7.4
+streamlit==1.1.0
+torch==1.10.0
+transformers==4.12.2
