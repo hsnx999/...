@@ -1,51 +1,83 @@
+import os
 import streamlit as st
-import torch,torchvision
-# import req
-from detectron2.utils.logger import setup_logger
-import numpy as np
-import os, json, cv2, random
-from detectron2 import model_zoo
-from detectron2.engine import DefaultPredictor
-from detectron2.config import get_cfg
-from detectron2.utils.visualizer import Visualizer
-from detectron2.data import MetadataCatalog, DatasetCatalog
+import torch
+import string
+from transformers import BertTokenizer, BertForMaskedLM
 
-# print(torch.__version__, torch.cuda.is_available())
-# assert torch.__version__.startswith("1.8")
-setup_logger()
+st.set_page_config(page_title='Next Word Prediction Model', page_icon=None, layout='centered', initial_sidebar_state='auto')
 
-st.title('Deploying a Pytorch model on Streamlit | Detectron2')
-st.write('What is Detectron2?')
-st.write('Detectron2 is Facebook AI Researchs next generation software system that implements state-of-the-art object detection algorithms. It is a ground-up rewrite of the previous version, Detectron, and it originates from maskrcnn-benchmark.')
-st.image('img.png')
+@st.cache()
+def load_model(model_name):
+  try:
+    if model_name.lower() == "bert":
+      bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+      bert_model = BertForMaskedLM.from_pretrained('bert-base-uncased').eval()
+      return bert_tokenizer,bert_model
+  except Exception as e:
+    pass
 
-# import some common detectron2 utilities
+#use joblib to fast your function
 
-st.write('\n')
+def decode(tokenizer, pred_idx, top_clean):
+  ignore_tokens = string.punctuation + '[PAD]'
+  tokens = []
+  for w in pred_idx:
+    token = ''.join(tokenizer.decode(w).split())
+    if token not in ignore_tokens:
+      tokens.append(token.replace('##', ''))
+  return '\n'.join(tokens[:top_clean])
 
-st.title('Testing the Zoo Model')
-st.write('Test image')
-im = cv2.imread("test_image1.jpeg")
-# showing image
-st.image('test_image1.jpeg')
+def encode(tokenizer, text_sentence, add_special_tokens=True):
+  text_sentence = text_sentence.replace('<mask>', tokenizer.mask_token)
+    # if <mask> is the last token, append a "." so that models dont predict punctuation.
+  if tokenizer.mask_token == text_sentence.split()[-1]:
+    text_sentence += ' .'
 
-#Then, we create a detectron2 config and a detectron2 `DefaultPredictor` to run inference on this image.
-cfg = get_cfg()
-cfg.MODEL.DEVICE = "cpu"
-# print(cfg)
-# add project-specific config (e.g., TensorMask) here if you're not running a model in detectron2's core library
-cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))
-cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5  # set threshold for this model
-# Find a model from detectron2's model zoo. You can use the https://dl.fbaipublicfiles... url as well
-cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml")
-predictor = DefaultPredictor(cfg)
-outputs = predictor(im)
+    input_ids = torch.tensor([tokenizer.encode(text_sentence, add_special_tokens=add_special_tokens)])
+    mask_idx = torch.where(input_ids == tokenizer.mask_token_id)[1].tolist()[0]
+  return input_ids, mask_idx
 
-st.write('Writing pred_classes/pred_boxes output')
-st.write(outputs["instances"].pred_classes)
-st.write(outputs["instances"].pred_boxes)
+def get_all_predictions(text_sentence, top_clean=5):
+    # ========================= BERT =================================
+  input_ids, mask_idx = encode(bert_tokenizer, text_sentence)
+  with torch.no_grad():
+    predict = bert_model(input_ids)[0]
+  bert = decode(bert_tokenizer, predict[0, mask_idx, :].topk(top_k).indices.tolist(), top_clean)
+  return {'bert': bert}
 
-st.write('Using Vizualizer to draw the predictions on Image')
-v = Visualizer(im[:, :, ::-1], MetadataCatalog.get(cfg.DATASETS.TRAIN[0]), scale=1.2)
-out = v.draw_instance_predictions(outputs["instances"].to("cpu"))
-st.image(out.get_image()[:, :, ::-1])
+def get_prediction_eos(input_text):
+  try:
+    input_text += ' <mask>'
+    res = get_all_predictions(input_text, top_clean=int(top_k))
+    return res
+  except Exception as error:
+    pass
+
+try:
+
+  st.markdown("<h1 style='text-align: center;'>Next Word Prediction</h1>", unsafe_allow_html=True)
+  st.markdown("<h4 style='text-align: center; color: #B2BEB5;'><i>Keywords  : BertTokenizer, BertForMaskedLM, Pytorch</i></h4>", unsafe_allow_html=True)
+
+  st.sidebar.text("Next Word Prediction Model")
+  top_k = st.sidebar.slider("Select How many words do you need", 1 , 25, 1) #some times it is possible to have less words
+  print(top_k)
+  model_name = st.sidebar.selectbox(label='Select Model to Apply',  options=['BERT', 'XLNET'], index=0,  key = "model_name")
+
+  bert_tokenizer, bert_model  = load_model(model_name) 
+  input_text = st.text_area("Enter your text here")
+
+  #click outside box of input text to get result
+  res = get_prediction_eos(input_text)
+
+  answer = []
+  print(res['bert'].split("\n"))
+  for i in res['bert'].split("\n"):
+  	answer.append(i)
+  answer_as_string = "    ".join(answer)
+  st.text_area("Predicted List is Here",answer_as_string,key="predicted_list") 
+  st.image('https://freepngimg.com/download/keyboard/6-2-keyboard-png-file.png',use_column_width=True)
+  st.markdown("<h6 style='text-align: center; color: #808080;'>Created By <a href='https://github.com/7Vivek'>Vivek</a> - Checkout complete project <a href='https://github.com/7Vivek/Next-Word-Prediction-Streamlit'>here</a></h6>", unsafe_allow_html=True)
+
+except Exception as e:
+  print("SOME PROBLEM OCCURED")  
+  
