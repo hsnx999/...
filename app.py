@@ -76,7 +76,7 @@ try:
   answer_as_string = "    ".join(answer)
   st.text_area("Predicted List is Here",answer_as_string,key="predicted_list") 
   st.image('https://freepngimg.com/download/keyboard/6-2-keyboard-png-file.png',use_column_width=True)
-  st.markdown("<h6 style='text-align: center; color: #808080;'>Created By <a href='https://github.com/7Vivek'>Vivek</a> - Checkout complete project <a href='https://github.com/7Vivek/Next-Word-Prediction-Streamlit'>here</a></h6>", unsafe_allow_html=True)
+  st.markdown("<h6 style='text-align: center; color: #808080;'>Created By <a href='https://github.com/hsnx999/'>Hassan</a></h6>", unsafe_allow_html=True)
 
 except Exception as e:
   print("SOME PROBLEM OCCURED")  
